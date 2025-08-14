@@ -1,50 +1,36 @@
 import { useSelector, useDispatch } from "react-redux";
-import { setActiveDashboardTab } from "../slices/dashboardSlice";
+import { setActiveDashboardTab, setShowModal, setForm, setEditMode, setJobDetails } from "../slices/dashboardSlice";
 import NewJobModal from "../components/newjobmodal";
-import { useState, useEffect } from "react";
-import { FaEdit, FaTrash } from "react-icons/fa"; // Add this import at the top
+import { useEffect } from "react";
+import { FaEdit, FaTrash } from "react-icons/fa";
+import { getStatusFromCode, apiCall, buildApiUrl } from "../utills/helpers";
 
 export default function Dashboard() {
   const activeTab = useSelector(state => state.dashboard.activeDashboardTab);
+  const showModal = useSelector(state => state.dashboard.showModal);
+  const form = useSelector(state => state.dashboard.form);
+  const editMode = useSelector(state => state.dashboard.editMode);
+  const jobDetails = useSelector(state => state.dashboard.jobDetails);
+
   const dispatch = useDispatch();
+
   const handleTabClick = (tab) => {
     dispatch(setActiveDashboardTab(tab));
   };
 
-  const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({
-    customerName: '',
-    jobName: '',
-    notes: '',
-    deliveryDate: '',
-    priceQuote: 1000,
-    jobStatus: 'S', // Add status field
-    jobId: 0
-  });
-  const [editMode, setEditMode] = useState(false); // Track if editing
-
-  // State for job details
-  const [jobDetails, setJobDetails] = useState([]);
-
   // Fetch job details on mount
   useEffect(() => {
-    fetch('https://smartvendorapi.onrender.com/api/jobs', {
-      method: 'GET',
-      headers: {
-        'accept': 'application/json'
-      }
-    })
-      .then(res => res.json())
-      .then(data => setJobDetails(data))
+    apiCall(buildApiUrl('jobs'))
+      .then(data => dispatch(setJobDetails(data)))
       .catch(err => console.error('Error fetching jobs:', err));
-  }, []);
+  }, [dispatch]);
 
   const handleChange = e => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    dispatch(setForm({ ...form, [e.target.name]: e.target.value }));
   };
 
   const handleEdit = (job) => {
-    setForm({
+    dispatch(setForm({
       customerName: job.customer_name || job.customerName || '',
       jobName: job.job_name || job.jobName || '',
       notes: job.job_notes || job.jobNotes || '',
@@ -52,15 +38,14 @@ export default function Dashboard() {
       priceQuote: job.job_price_quote || job.jobPriceQuote || 1000,
       jobStatus: job.job_status || job.jobStatus || 'S',
       jobId: job.job_id || job.id || 0
-    });
-    setEditMode(true);
-    setShowModal(true);
+    }));
+    dispatch(setEditMode(true));
+    dispatch(setShowModal(true));
   };
 
   const handleSubmit = async e => {
     e.preventDefault();
 
-    // Prepare job data for PUT/POST
     const jobData = {
       jobId: form.jobId,
       jobName: form.jobName,
@@ -74,40 +59,17 @@ export default function Dashboard() {
 
     try {
       if (editMode) {
-        // Edit job using local API
-        await fetch(`http://localhost:3000/api/jobs/${form.jobId}`, {
-          method: 'PUT',
-          headers: {
-            'accept': '*/*',
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(jobData)
-        });
+        await apiCall(buildApiUrl('jobs', form.jobId), 'PUT', jobData);
       } else {
-        // Create new job (keep your existing POST logic if needed)
-        await fetch('https://smartvendorapi.onrender.com/api/jobs', {
-          method: 'POST',
-          headers: {
-            'accept': '*/*',
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(jobData)
-        });
+        await apiCall(buildApiUrl('jobs'), 'POST', jobData);
       }
 
-      // Fetch all jobs again (from your preferred API)
-      const res = await fetch('https://smartvendorapi.onrender.com/api/jobs', {
-        method: 'GET',
-        headers: {
-          'accept': 'application/json'
-        }
-      });
-      const data = await res.json();
-      setJobDetails(data);
+      const data = await apiCall(buildApiUrl('jobs'));
+      dispatch(setJobDetails(data));
 
-      setShowModal(false);
-      setEditMode(false);
-      setForm({
+      dispatch(setShowModal(false));
+      dispatch(setEditMode(false));
+      dispatch(setForm({
         customerName: '',
         jobName: '',
         notes: '',
@@ -115,30 +77,17 @@ export default function Dashboard() {
         priceQuote: 1000,
         jobStatus: 'S',
         jobId: 0
-      });
+      }));
     } catch (err) {
       console.error('Error saving job:', err);
     }
   };
 
   const handleDelete = async (jobId) => {
-    // Implement delete logic here
     try {
-      await fetch(`https://smartvendorapi.onrender.com/api/jobs/${jobId}`, {
-        method: 'DELETE',
-        headers: {
-          'accept': '*/*'
-        }
-      });
-      // Refresh job list
-      const res = await fetch('https://smartvendorapi.onrender.com/api/jobs', {
-        method: 'GET',
-        headers: {
-          'accept': 'application/json'
-        }
-      });
-      const data = await res.json();
-      setJobDetails(data);
+      await apiCall(buildApiUrl('jobs', jobId), 'DELETE');
+      const data = await apiCall(buildApiUrl('jobs'));
+      dispatch(setJobDetails(data));
     } catch (err) {
       console.error('Error deleting job:', err);
     }
@@ -149,7 +98,7 @@ export default function Dashboard() {
       <div className="p-6">
         <div id="content-management" className="tab-content active">
           <h2 className="text-2xl font-bold mb-4">Current job status</h2>
-          <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+          <button className="btn btn-primary" onClick={() => dispatch(setShowModal(true))}>
             + Add Job
           </button>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
@@ -175,8 +124,9 @@ export default function Dashboard() {
               <div>
                 <h5 className="mb-1">{job.job_name || job.jobName}</h5>
                 <p className="mb-0 text-muted">Customer: {job.customer_name || job.customerName}</p>
-                <p className="mb-0 text-muted">Status: {job.job_status || job.jobStatus}</p>
-                <p className="mb-0 text-muted">Delivery: {job.delivery_date || job.deliveryDate}</p>
+                <p className="mb-0 text-muted">Price Quote: Rs.{job.job_price_quote || job.jobPriceQuote}</p>
+                <p className="mb-0 text-muted">Status: {getStatusFromCode(job.job_status || job.jobStatus)}</p>
+                <p className="mb-0 text-muted">Delivery: {(job.delivery_date || job.deliveryDate).slice(0, 10)}</p>
               </div>
               <div>
                 <button className="btn btn-link" onClick={() => handleEdit(job)}>
@@ -192,7 +142,7 @@ export default function Dashboard() {
       </div>
       <NewJobModal
         show={showModal}
-        onClose={() => { setShowModal(false); setEditMode(false); }}
+        onClose={() => { dispatch(setShowModal(false)); dispatch(setEditMode(false)); }}
         form={form}
         isEditMode={editMode}
         handleChange={handleChange}
