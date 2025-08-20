@@ -1,8 +1,8 @@
 // Function to get status string from status code
 export function getStatusFromCode(statusCode) {
     switch (statusCode) {
-        case "S":
-            return "Started";
+        case "N":
+            return "New";
         case "I":
             return "In Progress";
         case "C":
@@ -21,6 +21,7 @@ export async function apiCall(url, method = 'GET', body = null, headers = {}) {
         headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
+            'Authorization': localStorage.getItem('authToken') ? `Bearer ${localStorage.getItem('authToken')}` : '',
             ...headers
         }
     };
@@ -47,5 +48,6 @@ export async function apiCall(url, method = 'GET', body = null, headers = {}) {
  */
 export function buildApiUrl(endpoint, id = null) {
     const baseUrl = 'https://smartvendorapi.onrender.com/api/';
+    //const baseUrl = 'http://localhost:3000/api/'; // For local development
     return id ? `${baseUrl}${endpoint}/${id}` : `${baseUrl}${endpoint}`;
 }

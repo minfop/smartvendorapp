@@ -36,7 +36,7 @@ export default function Dashboard() {
       notes: job.job_notes || job.jobNotes || '',
       deliveryDate: (job.delivery_date || job.deliveryDate || '').slice(0, 10),
       priceQuote: job.job_price_quote || job.jobPriceQuote || 1000,
-      jobStatus: job.job_status || job.jobStatus || 'S',
+      jobStatus: job.job_status || job.jobStatus || 'N',
       jobId: job.job_id || job.id || 0
     }));
     dispatch(setEditMode(true));
@@ -75,7 +75,7 @@ export default function Dashboard() {
         notes: '',
         deliveryDate: '',
         priceQuote: 1000,
-        jobStatus: 'S',
+        jobStatus: 'N',
         jobId: 0
       }));
     } catch (err) {

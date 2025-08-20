@@ -85,7 +85,7 @@ export default function NewJobModal({
                   onChange={handleChange}
                   required
                 >
-                  <option value="S">Started</option>
+                  <option value="N">New</option>
                   <option value="I">In Progress</option>
                   <option value="C">Completed</option>
                 </select>
